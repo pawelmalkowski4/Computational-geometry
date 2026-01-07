@@ -21,7 +21,7 @@ class Point:
     return self.distance(other) <= EPS
 
   def __hash__(self):
-    return hash((round(self.x,5),round(self.x,5)))
+    return hash((round(self.x,5),round(self.y,5)))
 
   def __repr__(self):
     return f"({self.x}, {self.y})"
@@ -210,7 +210,7 @@ def add_point_to_triangulation(triangulation, p, start_triangle, vis=True):
 
 
     if vis:
-        record_state(triangulation, p, removed, 'red', "Usuwanie wneki (Cavity Removal)")
+        record_state(triangulation, p, removed, 'red', "Usuwanie wneki")
 
 
     boundary = {}
@@ -255,7 +255,7 @@ def add_point_to_triangulation(triangulation, p, start_triangle, vis=True):
                 shared_edges[e] = t
 
     if vis:
-        record_state(triangulation, p, new_triangles, 'blue', "Wstawianie nowych (Retriangulation)")
+        record_state(triangulation, p, new_triangles, 'blue', "Wstawianie nowych")
     
     return new_triangles
 
@@ -277,17 +277,16 @@ def naiveSearch(points, vis=True):
         
         if found:
             if vis:
-                record_state(triangulation, p, [found], 'green', f"Naive Search: Punkt {i+1}")
-            # Przekazujemy flagę vis dalej
+                record_state(triangulation, p, [found], 'green', f"Podstawowy: Punkt {i+1}")
             add_point_to_triangulation(triangulation, p, found, vis=vis)
         else:
             if vis:
-                record_state(triangulation, p, [], 'black', f"Naive Search: ERROR Punkt {i+1}")
+                record_state(triangulation, p, [], 'black', f"Podstawowy: ERROR Punkt {i+1}")
 
     final_tris = clean_super_triangle(triangulation, st)
     
     if vis:
-        record_state(final_tris, None, [], 'white', "Koniec (Naive)")
+        record_state(final_tris, None, [], 'white', "Koniec (Podstawowy)")
         
     return final_tris
 
@@ -307,17 +306,14 @@ def walkingSearch(points, vis=True):
         visited = set()
         found = None
         
-        # Tworzymy listę path tylko jeśli jest potrzebna do wizualizacji
         path = [] if vis else None
 
         while curr:
             if vis:
                 path.append(curr)
-                # Visualize every step of the walk
-                record_state(triangulation, p, path[-1:], 'orange', f"Walking Search: Punkt {i+1} (Krok {len(path)})")
+                record_state(triangulation, p, path[-1:], 'orange', f"Sąsiedztwo topologiczne: Punkt {i+1} (Krok {len(path)})")
 
             if curr in visited:
-                # Fallback on cycle
                 for t in triangulation:
                     if t.is_inside(p): found = t; break
                 break
@@ -336,14 +332,13 @@ def walkingSearch(points, vis=True):
                         break
             
             if not moved:
-                 # Local minimum fallback
                  for t in triangulation:
                     if t.is_inside(p): found = t; break
                  break
         
         if found:
             if vis:
-                record_state(triangulation, p, [found], 'green', f"Walking Search: Znaleziono start dla {i+1}")
+                record_state(triangulation, p, [found], 'green', f"Sąsiedztwo topologiczne: Znaleziono start dla {i+1}")
             
             # Przekazujemy flagę vis dalej
             new_tris = add_point_to_triangulation(triangulation, p, found, vis=vis)
@@ -353,9 +348,32 @@ def walkingSearch(points, vis=True):
     final_tris = clean_super_triangle(triangulation, st)
     
     if vis:
-        record_state(final_tris, None, [], 'white', "Koniec (Walking)")
+        record_state(final_tris, None, [], 'white', "Koniec (Sąsiedztwo topologiczne)")
         
     return final_tris
+
+
+from matplotlib.collections import LineCollection
+
+def plot(triangles):
+    fig, ax = plt.subplots(figsize=(8, 8))
+    
+    lines = []
+    xs = []
+    ys = []
+    for tri in triangles:
+        p1, p2, p3 = (tri.p1.x, tri.p1.y), (tri.p2.x, tri.p2.y), (tri.p3.x, tri.p3.y)
+        lines.append([p1, p2])
+        lines.append([p2, p3])
+        lines.append([p3, p1])
+        xs.extend([p1[0],p2[0],p3[0]])
+        ys.extend([p1[1],p2[1],p3[1]])
+    lc = LineCollection(lines, colors='black', linewidths=0.5)
+    ax.add_collection(lc)
+    ax.scatter(xs,ys)
+    ax.autoscale_view()
+    ax.set_aspect('equal')
+    plt.show()
 
 
 def render_gif(original_points, filename, duration=300):
@@ -386,7 +404,6 @@ def render_gif(original_points, filename, duration=300):
     fig, ax = plt.subplots(figsize=(8, 8))
     
     for i, snap in enumerate(HISTORY):
-        # Opcjonalnie: print postępu co jakiś czas
         if i % 50 == 0: print(f"Przetwarzanie klatki {i}/{len(HISTORY)}...")
         
         ax.clear()
@@ -412,7 +429,7 @@ def render_gif(original_points, filename, duration=300):
             ax.plot(snap['point'].x, snap['point'].y, 'ro', markersize=8)
             
         buf = io.BytesIO()
-        plt.savefig(buf, format='png', dpi=80) # Zmniejszone DPI dla szybkości
+        plt.savefig(buf, format='png', dpi=80)
         buf.seek(0)
         frames.append(Image.open(buf))
         
